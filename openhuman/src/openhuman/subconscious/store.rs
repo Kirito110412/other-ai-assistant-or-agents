@@ -1,0 +1,207 @@
+//! SQLite persistence for the subconscious engine.
+//!
+//! Follows the cron module's `with_connection` pattern: opens the database,
+//! runs DDL on every connection, and provides pure functions.
+//!
+//! ## Init-failure noise suppression (TAURI-RUST-A)
+//!
+//! `with_connection` runs the schema DDL on every call. Transient
+//! `SQLITE_BUSY` / `SQLITE_LOCKED` errors are handled by a per-connection
+//! busy timeout (5 s) plus an application-level retry loop (3 retries,
+//! 100 / 300 / 900 ms backoff).
+
+use anyhow::{Context, Result};
+use rusqlite::{Connection, OptionalExtension};
+use std::path::Path;
+use std::time::Duration;
+
+const BUSY_TIMEOUT: Duration = Duration::from_millis(5000);
+const OPEN_RETRY_ATTEMPTS: u32 = 3;
+const OPEN_RETRY_BASE_MS: u64 = 100;
+
+pub fn with_connection<T>(
+    workspace_dir: &Path,
+    f: impl FnOnce(&Connection) -> Result<T>,
+) -> Result<T> {
+    let db_path = workspace_dir.join("subconscious").join("subconscious.db");
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create subconscious dir: {}", parent.display()))?;
+    }
+
+    let conn = open_and_initialize_with_retry(&db_path)?;
+    f(&conn)
+}
+
+fn open_and_initialize_with_retry(db_path: &Path) -> Result<Connection> {
+    let mut last_err: Option<anyhow::Error> = None;
+
+    for attempt in 0..=OPEN_RETRY_ATTEMPTS {
+        match open_and_initialize(db_path) {
+            Ok(conn) => {
+                if attempt > 0 {
+                    tracing::debug!(
+                        target: "openhuman::subconscious::store",
+                        attempt = attempt,
+                        db_path = %db_path.display(),
+                        "[subconscious::store] open/DDL succeeded after {attempt} busy retries"
+                    );
+                }
+                return Ok(conn);
+            }
+            Err(e) => {
+                if !is_sqlite_busy(&e) || attempt == OPEN_RETRY_ATTEMPTS {
+                    last_err = Some(e);
+                    break;
+                }
+                let sleep_ms = OPEN_RETRY_BASE_MS
+                    .saturating_mul(3u64.saturating_pow(attempt))
+                    .min(900);
+                tracing::warn!(
+                    target: "openhuman::subconscious::store",
+                    attempt = attempt + 1,
+                    max_attempts = OPEN_RETRY_ATTEMPTS + 1,
+                    sleep_ms = sleep_ms,
+                    error = %format!("{e:#}"),
+                    "[subconscious::store] SQLite busy/locked on open or DDL; retrying"
+                );
+                std::thread::sleep(Duration::from_millis(sleep_ms));
+                last_err = Some(e);
+            }
+        }
+    }
+
+    Err(last_err.expect("OPEN_RETRY_ATTEMPTS >= 0 ensures at least one attempt"))
+}
+
+fn open_and_initialize(db_path: &Path) -> Result<Connection> {
+    let conn = Connection::open(db_path)
+        .with_context(|| format!("failed to open subconscious DB: {}", db_path.display()))?;
+
+    conn.busy_timeout(BUSY_TIMEOUT)
+        .context("configure subconscious busy_timeout")?;
+
+    conn.execute_batch(SCHEMA_DDL)
+        .context("failed to run subconscious schema DDL")?;
+
+    super::reflection_store::migrate_drop_legacy_columns(&conn);
+    super::reflection_store::migrate_add_source_chunks_column(&conn);
+    super::reflection_store::migrate_add_thread_id_column(&conn);
+
+    Ok(conn)
+}
+
+fn is_sqlite_busy(err: &anyhow::Error) -> bool {
+    if let Some(rusqlite::Error::SqliteFailure(sqlite_err, _)) =
+        err.downcast_ref::<rusqlite::Error>()
+    {
+        return matches!(
+            sqlite_err.code,
+            rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
+        );
+    }
+    let msg = format!("{err:#}").to_ascii_lowercase();
+    msg.contains("database is locked") || msg.contains("database table is locked")
+}
+
+const SCHEMA_DDL: &str = "
+    PRAGMA foreign_keys = ON;
+    PRAGMA journal_mode = WAL;
+
+    -- Legacy tables retained for backward compatibility with existing DBs.
+    -- No longer written to or read from.
+    CREATE TABLE IF NOT EXISTS subconscious_tasks (
+        id          TEXT PRIMARY KEY,
+        title       TEXT NOT NULL,
+        source      TEXT NOT NULL DEFAULT 'user',
+        recurrence  TEXT NOT NULL DEFAULT 'pending',
+        enabled     INTEGER NOT NULL DEFAULT 1,
+        last_run_at REAL,
+        next_run_at REAL,
+        completed   INTEGER NOT NULL DEFAULT 0,
+        created_at  REAL NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS subconscious_log (
+        id          TEXT PRIMARY KEY,
+        task_id     TEXT NOT NULL,
+        tick_at     REAL NOT NULL,
+        decision    TEXT NOT NULL,
+        result      TEXT,
+        duration_ms INTEGER,
+        created_at  REAL NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS subconscious_escalations (
+        id          TEXT PRIMARY KEY,
+        task_id     TEXT NOT NULL,
+        log_id      TEXT,
+        title       TEXT NOT NULL,
+        description TEXT NOT NULL,
+        priority    TEXT NOT NULL DEFAULT 'normal',
+        status      TEXT NOT NULL DEFAULT 'pending',
+        created_at  REAL NOT NULL,
+        resolved_at REAL
+    );
+
+    CREATE TABLE IF NOT EXISTS subconscious_reflections (
+        id              TEXT PRIMARY KEY,
+        kind            TEXT NOT NULL,
+        body            TEXT NOT NULL,
+        proposed_action TEXT,
+        source_refs     TEXT NOT NULL DEFAULT '[]',
+        source_chunks   TEXT NOT NULL DEFAULT '[]',
+        created_at      REAL NOT NULL,
+        acted_on_at     REAL,
+        dismissed_at    REAL,
+        thread_id       TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_reflections_created
+        ON subconscious_reflections(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS subconscious_hotness_snapshots (
+        entity_id       TEXT PRIMARY KEY,
+        score           REAL NOT NULL,
+        captured_at     REAL NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS subconscious_state (
+        key   TEXT PRIMARY KEY,
+        value REAL NOT NULL
+    );
+";
+
+#[cfg(test)]
+pub(crate) const SCHEMA_DDL_FOR_TESTS: &str = SCHEMA_DDL;
+
+// ── Engine state KV ──────────────────────────────────────────────────────────
+
+const STATE_KEY_LAST_TICK_AT: &str = "last_tick_at";
+
+pub fn get_last_tick_at(conn: &Connection) -> Result<f64> {
+    let value: Option<f64> = conn
+        .query_row(
+            "SELECT value FROM subconscious_state WHERE key = ?1",
+            [STATE_KEY_LAST_TICK_AT],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(value.unwrap_or(0.0))
+}
+
+pub fn set_last_tick_at(conn: &Connection, value: f64) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO subconscious_state (key, value) VALUES (?1, ?2)",
+        rusqlite::params![STATE_KEY_LAST_TICK_AT, value],
+    )?;
+    Ok(())
+}
+
+fn now_secs() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+#[cfg(test)]
+#[path = "store_tests.rs"]
+mod tests;
