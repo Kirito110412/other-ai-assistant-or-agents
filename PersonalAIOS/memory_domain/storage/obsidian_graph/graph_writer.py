@@ -5,7 +5,7 @@ class ObsidianGraphStorage:
     Zero-VRAM, interconnected markdown file nodes.
     """
     def __init__(self, storage_dir="~/.personalos/memory_graph"):
-        self.storage_dir = storage_dir
+        self.storage_dir = os.path.expanduser(storage_dir)
         os.makedirs(self.storage_dir, exist_ok=True)
 
     def write_node(self, node_id: str, content: str, links: list):

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+ENV/
+env.bak/
+venv.bak/
+sandbox_data/
+infra/ollama_data/

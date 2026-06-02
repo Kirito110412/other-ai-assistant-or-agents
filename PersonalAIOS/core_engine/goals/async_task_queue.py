@@ -1,22 +1,85 @@
 import asyncio
+import json
+import os
+import logging
+from typing import Dict, Any
+
+logger = logging.getLogger("AsyncTaskQueue")
 
 class AsyncTaskQueue:
     """
     Persistent tracker for long-term operations lasting hours, days, or months.
+    Survives system reboots by serializing task state to disk.
     """
-    def __init__(self):
-        self.queue = []
+    def __init__(self, storage_path="~/.personalos/goals/active_tasks.json"):
+        self.storage_path = os.path.expanduser(storage_path)
+        self.queue: Dict[str, Dict[str, Any]] = self._load_state()
+        self._background_tasks = []
 
-    async def add_long_term_goal(self, goal_name: str, duration_estimate: str):
+    def _load_state(self) -> dict:
+        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+        if os.path.exists(self.storage_path):
+            with open(self.storage_path, 'r') as f:
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError:
+                    return {}
+        return {}
+
+    def _save_state(self):
+        with open(self.storage_path, 'w') as f:
+            json.dump(self.queue, f, indent=4)
+
+    async def add_long_term_goal(self, goal_id: str, goal_name: str, duration_estimate: str):
         """
         Adds a massive goal (e.g., 'Code AAA game') to the background orchestrator.
         """
-        self.queue.append({"goal": goal_name, "status": "running", "duration": duration_estimate})
-        # Starts background loop
-        asyncio.create_task(self._background_execution_loop(goal_name))
+        self.queue[goal_id] = {
+            "goal": goal_name,
+            "status": "running",
+            "duration_estimate": duration_estimate,
+            "progress_percent": 0.0,
+            "sub_tasks": []
+        }
+        self._save_state()
+        logger.info(f"Added massive long-term goal: {goal_name} [{goal_id}]")
 
-    async def _background_execution_loop(self, goal_name: str):
-        """Runs persistently, surviving minor reboots by serializing state."""
+        # Starts background loop for this specific goal
+        task = asyncio.create_task(self._background_execution_loop(goal_id))
+        self._background_tasks.append(task)
+
+    async def _background_execution_loop(self, goal_id: str):
+        """
+        Runs persistently. Periodically checks in, spawns sub-tasks via Coordinator,
+        and saves state so progress isn't lost if the machine sleeps/reboots.
+        """
         while True:
-            # Execute sub-tasks
-            await asyncio.sleep(3600)  # Check in every hour
+            if goal_id not in self.queue:
+                break # Goal was removed
+
+            goal_data = self.queue[goal_id]
+
+            if goal_data["status"] == "completed":
+                logger.info(f"Long-term goal [{goal_id}] is completed. Ending background loop.")
+                break
+
+            logger.debug(f"Heartbeat for long-term goal [{goal_id}]: {goal_data['progress_percent']}% complete.")
+
+            # TODO: Here we would interface with LogicEngine to evaluate next sub-step
+            # and publish it to the EventBus.
+
+            # Persist any state changes
+            self._save_state()
+
+            # Sleep for an hour before checking long-term progress again
+            # (Set low for testing/scaffolding purposes)
+            await asyncio.sleep(60)
+
+    async def update_progress(self, goal_id: str, percent: float, status: str = "running"):
+        if goal_id in self.queue:
+            self.queue[goal_id]["progress_percent"] = percent
+            self.queue[goal_id]["status"] = status
+            self._save_state()
+
+# Global singleton
+long_term_queue = AsyncTaskQueue()
