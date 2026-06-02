@@ -1,0 +1,26 @@
+[project]
+name = "PersonalAIOS"
+version = "0.1.0"
+description = "An enterprise-grade, autonomous personal AI OS mimicking conscious logic, long-term memory, and physical system control."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "docker>=6.1.3",
+    "python-multipart>=0.0.6",
+    "requests>=2.31.0",
+    # Advanced memory parsing
+    "markdown>=3.4.4",
+    "rank_bm25>=0.2.2",
+    # Local model interaction
+    "openai>=1.0.0", # Used as client for both cloud models and local vLLM/Ollama
+    # Sensory/Actuation placeholder deps
+    "pyautogui>=0.9.54",
+    "opencv-python>=4.8.0.76"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
