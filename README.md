@@ -1,1 +1,1 @@
-# hermes
+this repo have all the other ai angent the can be use to create a now one by combining all the features which are best combined them.
