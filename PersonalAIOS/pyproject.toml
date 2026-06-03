@@ -21,6 +21,8 @@ dependencies = [
     # Sensory/Actuation placeholder deps
     "pyautogui>=0.9.54",
     "opencv-python>=4.8.0.76",
+    "SpeechRecognition>=3.10.0",
+    "pyaudio>=0.2.13",
     # Surrogates and Web interaction
     "beautifulsoup4>=4.12.2"
 ]
