@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import logging
 from typing import Dict, Any, List
-from .event_bus import nervous_system
+from PersonalAIOS.core_engine.orchestrator.event_bus import nervous_system
 
 logger = logging.getLogger("TaskCoordinator")
 
@@ -19,31 +19,55 @@ class TaskCoordinator:
         nervous_system.subscribe("sub_agent_complete", self._handle_sub_agent_completion)
         nervous_system.subscribe("sub_agent_failed", self._handle_sub_agent_failure)
 
-    async def execute_multi_modal_task(self, instructions: str, required_modules: List[str]) -> str:
+    async def process_user_input(self, raw_input: str):
         """
-        Dynamically orchestrates multiple modules (Vision, Memory, Logic, etc.) simultaneously.
+        Takes raw Hinglish/English input, runs it through the Intent Router,
+        and orchestrates the parsed JSON tasks into Foreground or Background streams.
         """
-        task_id = str(uuid.uuid4())
+        from PersonalAIOS.core_engine.logic.sequential_solver import SequentialSolver
+        router = SequentialSolver()
+
+        intent_response = await router.break_down_problem(raw_input)
+
+        if intent_response["status"] == "halted_for_confirmation":
+            # Fire event to UI asking for Y/N
+            await nervous_system.publish("ui_require_confirmation", {"message": intent_response["message"]})
+            return
+
+        if intent_response["status"] == "executing":
+            for task in intent_response.get("tasks", []):
+                if task.get("duration") == "long_term":
+                    await self._dispatch_background_task(task)
+                else:
+                    await self._dispatch_foreground_task(task)
+
+    async def _dispatch_background_task(self, task: dict):
+        """Routes to AsyncTaskQueue for multi-day operations."""
+        from PersonalAIOS.core_engine.goals.async_task_queue import long_term_queue
+        logger.info(f"Dispatching LONG TERM task: {task['description']}")
+        await long_term_queue.add_long_term_goal(
+            goal_id=task.get("task_id", str(uuid.uuid4())),
+            goal_name=task["description"],
+            duration_estimate="months"
+        )
+
+    async def _dispatch_foreground_task(self, task: dict):
+        """Executes immediately on main thread via EventBus."""
+        logger.info(f"Dispatching IMMEDIATE task: {task['description']}")
+        task_id = task.get("task_id", str(uuid.uuid4()))
         self.active_tasks[task_id] = {
             "status": "running",
-            "instructions": instructions,
-            "required_modules": required_modules,
+            "description": task["description"],
+            "required_modules": task.get("required_modules", []),
             "completed_modules": [],
             "results": {}
         }
 
-        logger.info(f"Orchestrating massive task [{task_id}] requiring modules: {required_modules}")
-
-        # Trigger all required isolated modules in parallel via the event bus
-        for module in required_modules:
-            event_topic = f"{module}_start_request"
-            payload = {
+        for module in task.get("required_modules", []):
+            await nervous_system.publish(f"{module}_start_request", {
                 "task_id": task_id,
-                "instructions": instructions
-            }
-            await nervous_system.publish(event_topic, payload)
-
-        return task_id
+                "instructions": task["description"]
+            })
 
     async def _handle_sub_agent_completion(self, payload: dict):
         """

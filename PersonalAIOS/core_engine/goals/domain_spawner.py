@@ -1,7 +1,7 @@
 import logging
 import uuid
 from typing import List
-from ..orchestrator.event_bus import nervous_system
+from PersonalAIOS.core_engine.orchestrator.event_bus import nervous_system
 
 logger = logging.getLogger("DomainSpawner")
 

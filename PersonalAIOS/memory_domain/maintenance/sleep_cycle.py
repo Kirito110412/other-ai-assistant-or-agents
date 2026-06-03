@@ -11,6 +11,8 @@ class SleepCycle:
     async def start_cycle(self):
         """Triggers the deduplicator and archiver."""
         if self.is_idle:
+            from .deduplicator import Deduplicator
             print("Initiating Sleep Cycle Memory Pruning...")
-            # await Deduplicator.run()
+            deduper = Deduplicator()
+            await deduper.run_deduplication()
             # await Archiver.run()

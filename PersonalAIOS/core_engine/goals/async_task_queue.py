@@ -82,7 +82,7 @@ class AsyncTaskQueue:
             self._save_state()
 
             # Fire event to update the Menu Bar UI and Avatar
-            from ..orchestrator.event_bus import nervous_system
+            from PersonalAIOS.core_engine.orchestrator.event_bus import nervous_system
             await nervous_system.publish("ui_task_progress_update", {
                 "goal_id": goal_id,
                 "goal_name": self.queue[goal_id]["goal"],

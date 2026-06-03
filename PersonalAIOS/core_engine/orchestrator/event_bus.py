@@ -54,7 +54,12 @@ class EventBus:
             if tasks:
                 # True fire-and-forget: spawn a background task to await the gather
                 # so the publisher is never blocked by slow subscribers.
-                asyncio.create_task(asyncio.gather(*tasks, return_exceptions=True))
+                # Must hold strong references to background tasks per asyncio docs
+                task = asyncio.create_task(asyncio.gather(*tasks, return_exceptions=True))
+                if not hasattr(self, '_background_tasks'):
+                    self._background_tasks = set()
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
 
 # Global singleton instance of the nervous system
 nervous_system = EventBus()

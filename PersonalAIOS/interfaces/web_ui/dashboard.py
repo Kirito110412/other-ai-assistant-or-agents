@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from ..gateways.whatsapp_gateway import whatsapp_router
-from ..gateways.telegram_gateway import telegram_router
+from PersonalAIOS.interfaces.gateways.whatsapp_gateway import whatsapp_router
+from PersonalAIOS.interfaces.gateways.telegram_gateway import telegram_router
 
 app = FastAPI(title="PersonalAIOS Omni-Channel Interface")
 

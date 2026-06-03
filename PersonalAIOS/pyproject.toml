@@ -14,6 +14,8 @@ dependencies = [
     # Advanced memory parsing
     "markdown>=3.4.4",
     "rank_bm25>=0.2.2",
+    "chromadb>=0.4.15",
+    "sentence-transformers>=2.2.2",
     # Local model interaction
     "openai>=1.0.0", # Used as client for both cloud models and local vLLM/Ollama
     # Sensory/Actuation placeholder deps

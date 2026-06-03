@@ -1,5 +1,5 @@
 import logging
-from ...core_engine.orchestrator.event_bus import nervous_system
+from PersonalAIOS.core_engine.orchestrator.event_bus import nervous_system
 
 logger = logging.getLogger("DesktopAvatar")
 
