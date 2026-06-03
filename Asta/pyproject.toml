@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Asta"
+version = "0.1.0"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "chromadb",
+    "rank_bm25",
+    "pyautogui",
+    "docker",
+    "aiohttp",
+    "beautifulsoup4",
+    "opencv-python",
+    "openai",
+    "websockets",
+    "SpeechRecognition",
+    "PyAudio",
+    "pocketsphinx",
+    "PyQt5"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
