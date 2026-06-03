@@ -19,8 +19,8 @@ class HybridSwitch:
             api_key=os.getenv("OPENAI_API_KEY", "missing_key")
         )
 
-        # Pulls specific model from environment, defaults to Qwen 3B
-        self.local_model_name = os.getenv("LOCAL_MODEL_NAME", "qwen2.5:3b")
+        # Pulls specific model from environment, defaults to Qwen3 3B
+        self.local_model_name = os.getenv("LOCAL_MODEL_NAME", "qwen3:3b")
         self.cloud_model_name = os.getenv("CLOUD_MODEL_NAME", "gpt-4o")
 
     async def execute_query(self, messages: list, complexity: float, response_format: dict = None) -> str:
