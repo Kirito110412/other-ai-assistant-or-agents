@@ -81,5 +81,14 @@ class AsyncTaskQueue:
             self.queue[goal_id]["status"] = status
             self._save_state()
 
+            # Fire event to update the Menu Bar UI and Avatar
+            from ..orchestrator.event_bus import nervous_system
+            await nervous_system.publish("ui_task_progress_update", {
+                "goal_id": goal_id,
+                "goal_name": self.queue[goal_id]["goal"],
+                "progress_percent": percent,
+                "duration_estimate": self.queue[goal_id]["duration_estimate"]
+            })
+
 # Global singleton
 long_term_queue = AsyncTaskQueue()
