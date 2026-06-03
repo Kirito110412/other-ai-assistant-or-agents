@@ -25,8 +25,12 @@ class HybridSwitch:
     async def execute_query(self, messages: list, complexity: float) -> str:
         """
         Determines the most efficient neural pathway based on complexity score
-        and executes the inference.
+        and executes the inference. Injects cultural persona dynamically.
         """
+        from PersonalAIOS.identity_domain.localization.cultural_adapter import CulturalAdapter
+        adapter = CulturalAdapter()
+        messages = adapter.inject_persona(messages)
+
         if complexity < 0.4:
             logger.info(f"Routing to local lightweight model: {self.local_model_name}")
             try:

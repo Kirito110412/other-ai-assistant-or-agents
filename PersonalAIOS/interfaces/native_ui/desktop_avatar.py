@@ -40,12 +40,15 @@ class HolographicAvatar:
         self.label = tk.Label(self.root, text="(•_•)\nIdle", fg="green", bg="black", font=("Courier", 16))
         self.label.pack(expand=True)
 
-        # Start UI loop
-        threading.Thread(target=self.root.mainloop, daemon=True).start()
+        # Start UI loop - Now executed synchronously on the main thread via bootloader
+        # to ensure strict macOS thread-safety for GUI toolkits.
+        self.root.mainloop()
 
     def update_avatar_state(self, face: str, text: str, color: str):
+        # Uses root.after to safely push GUI updates from background EventBus threads
+        # to the main Tkinter thread, preventing macOS segmentation faults.
         if self.root and self.label:
-            self.label.config(text=f"{face}\n{text}", fg=color)
+            self.root.after(0, lambda: self.label.config(text=f"{face}\n{text}", fg=color))
 
     def toggle_visibility(self, state: bool):
         self.is_visible = state
