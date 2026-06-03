@@ -2,10 +2,10 @@ import asyncio
 import threading
 import uvicorn
 import logging
-from PersonalAIOS.interfaces.onboarding.profile_generator import ProfileGenerator
-from PersonalAIOS.interfaces.native_ui.avatar_websocket import AvatarWebSocketServer
-from PersonalAIOS.interfaces.web_ui.dashboard import app as fastapi_app
-from PersonalAIOS.core_engine.orchestrator.event_bus import nervous_system
+from interfaces.onboarding.profile_generator import ProfileGenerator
+from interfaces.native_ui.avatar_websocket import AvatarWebSocketServer
+from interfaces.web_ui.dashboard import app as fastapi_app
+from core_engine.orchestrator.event_bus import nervous_system
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PersonalAIOS_Bootloader")
@@ -21,8 +21,8 @@ def run_background_event_loop(loop):
     logger.info("Core Async Event Loop started.")
 
     # Initialize and start Passive Senses
-    from PersonalAIOS.actuation_sensory.passive.screen_listener import ScreenListener
-    from PersonalAIOS.actuation_sensory.passive.audio_listener import AudioListener
+    from actuation_sensory.passive.screen_listener import ScreenListener
+    from actuation_sensory.passive.audio_listener import AudioListener
 
     screen_listener = ScreenListener()
     audio_listener = AudioListener()
