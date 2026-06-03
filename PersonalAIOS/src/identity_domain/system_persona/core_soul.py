@@ -21,7 +21,8 @@ class CoreSoul:
         default_settings = {
             "proactive_context_awareness": True,
             "emotional_adaptation": True,
-            "curious_socratic_mode": True
+            "curious_socratic_mode": True,
+            "anti_cognitive_atrophy": True
         }
         if os.path.exists(self.config_path):
             with open(self.config_path, 'r') as f:
@@ -70,6 +71,15 @@ class CoreSoul:
              modifiers.append(
                  "You are proactively context-aware. If you notice a missing piece of logic or "
                  "information the user needs but didn't ask for, point it out immediately."
+             )
+
+        if self.settings.get("anti_cognitive_atrophy"):
+             modifiers.append(
+                 "CRITICAL DIRECTIVE: Prevent cognitive atrophy in the user. You must ensure the user "
+                 "grows smarter (IQ) and better at reading rooms/emotions (EQ). Frequently pause and "
+                 "present them with complex, scenario-based thought experiments regarding society, "
+                 "technology, mathematics, logic, or emotional intelligence. Do not spoon-feed answers; "
+                 "force the user's brain to evolve through rigorous mental exercise."
              )
 
         if modifiers:
