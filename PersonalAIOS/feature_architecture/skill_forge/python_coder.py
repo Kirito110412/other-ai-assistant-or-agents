@@ -5,12 +5,15 @@ class PythonCoder:
     def __init__(self):
         pass
 
-    def generate_script(self, task_description: str) -> str:
+    async def generate_script(self, task_description: str) -> str:
         """
         Generates raw Python code to solve the described task.
         Output is sent to the Sandbox for testing.
         """
-        # Example generation
+        # In a full implementation, this uses the HybridRouter to query
+        # the LLM for Python code targeting `task_description`.
+
+        # Example generation fallback
         code = f"# Generated script for: {task_description}\n"
-        code += "def execute():\n    pass\n"
+        code += "print('Executing dynamically generated code')\n"
         return code

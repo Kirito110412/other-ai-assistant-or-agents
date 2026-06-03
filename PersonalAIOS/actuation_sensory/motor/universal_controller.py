@@ -1,8 +1,9 @@
 import pyautogui
 
-class MacOSController:
+class UniversalMotorController:
     """
-    Physical mouse/keyboard simulation for absolute OS control.
+    Physical mouse/keyboard simulation for absolute OS control across macOS/Win/Linux.
+    Uses PyAutoGUI as a cross-platform wrapper.
     """
     def __init__(self):
         # Safety fail-safe
