@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from bs4 import BeautifulSoup
-import requests
+import aiohttp
 from PersonalAIOS.actuation_sensory.motor.universal_controller import UniversalMotorController
 from PersonalAIOS.actuation_sensory.vision.screen_parser import ScreenParser
 
@@ -21,17 +21,19 @@ class WebScraper:
 
     async def extract_clean_text(self, url: str) -> str:
         """
-        Attempts to extract text. If Cloudflare/CAPTCHA blocks it, uses the native UI.
+        Attempts to extract text asynchronously. If Cloudflare/CAPTCHA blocks it, uses the native UI.
         """
         logger.info(f"Attempting standard extraction for {url}")
         try:
-            response = requests.get(url, headers=self.headers, timeout=10)
-            if response.status_code in [200, 201]:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                return soup.get_text(separator=' ', strip=True)[:10000] # Limit size for LLM
-            else:
-                logger.warning(f"Standard extraction failed with {response.status_code}. Initiating physical bypass.")
-                return await self._physical_vision_extraction(url)
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get(url, timeout=10) as response:
+                    if response.status in [200, 201]:
+                        html_content = await response.text()
+                        soup = BeautifulSoup(html_content, 'html.parser')
+                        return soup.get_text(separator=' ', strip=True)[:10000] # Limit size for LLM
+                    else:
+                        logger.warning(f"Standard extraction failed with {response.status}. Initiating physical bypass.")
+                        return await self._physical_vision_extraction(url)
         except Exception as e:
             logger.error(f"Scraper error: {e}. Initiating physical bypass.")
             return await self._physical_vision_extraction(url)

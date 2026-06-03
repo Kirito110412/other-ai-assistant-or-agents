@@ -1,18 +1,23 @@
 import pyautogui
 import os
 import base64
+import tempfile
 
 class ScreenParser:
     """
     Native UI coordinate extraction without DOM scraping.
     """
     def __init__(self):
-        pass
+        self.default_temp_dir = tempfile.gettempdir()
 
-    def capture_screen(self, save_path: str = "/tmp/current_screen.png"):
+    def capture_screen(self, save_path: str = None):
         """
         Uses PyAutoGUI (cross platform) to grab the current screen state.
+        Uses OS-agnostic temp directory if no save path is provided.
         """
+        if save_path is None:
+            save_path = os.path.join(self.default_temp_dir, "current_screen.png")
+
         screenshot = pyautogui.screenshot()
         screenshot.save(save_path)
         return save_path

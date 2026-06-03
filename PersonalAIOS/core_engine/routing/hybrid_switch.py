@@ -52,8 +52,21 @@ class HybridSwitch:
             try:
                 # Ollama natively supports standard json-object format
                 local_kwargs = {"temperature": 0.7}
+
+                # If local model is used, we MUST inject the JSON schema string directly into the prompt
+                # because local engines often ignore the strict Pydantic `json_schema` API argument.
                 if response_format:
+                    import json
                     local_kwargs["response_format"] = {"type": "json_object"}
+                    schema_prompt = f"\n\nYou MUST return a valid JSON object matching this exact schema: {json.dumps(response_format)}"
+
+                    # Append schema instruction to the final system prompt in the chain
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            msg["content"] += schema_prompt
+                            break
+                    else:
+                        messages.insert(0, {"role": "system", "content": schema_prompt})
 
                 response = await self.local_client.chat.completions.create(
                     model=self.local_model_name,
