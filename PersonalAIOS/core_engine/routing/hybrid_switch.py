@@ -10,34 +10,55 @@ class HybridSwitch:
     """
     def __init__(self):
         # We use the OpenAI client library as a universal interface.
-        # Ollama supports the OpenAI API spec locally on port 11434.
+        # Ollama/vLLM/LMStudio support the OpenAI API spec locally.
         self.local_client = AsyncOpenAI(
-            base_url="http://localhost:11434/v1",
-            api_key="ollama" # Required by client, ignored by Ollama
+            base_url=os.getenv("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1"),
+            api_key="local-proxy" # Required by client, ignored by most local servers
         )
         self.cloud_client = AsyncOpenAI(
             api_key=os.getenv("OPENAI_API_KEY", "missing_key")
         )
 
-        self.local_model_name = "llama3" # Replace with actual 3B model like phi3
-        self.cloud_model_name = "gpt-4o"
+        # Pulls specific model from environment, defaults to Qwen 3B
+        self.local_model_name = os.getenv("LOCAL_MODEL_NAME", "qwen2.5:3b")
+        self.cloud_model_name = os.getenv("CLOUD_MODEL_NAME", "gpt-4o")
 
-    async def execute_query(self, messages: list, complexity: float) -> str:
+    async def execute_query(self, messages: list, complexity: float, response_format: dict = None) -> str:
         """
         Determines the most efficient neural pathway based on complexity score
         and executes the inference. Injects cultural persona dynamically.
+        Optionally forces the LLM to output structured JSON.
         """
         from PersonalAIOS.identity_domain.localization.cultural_adapter import CulturalAdapter
         adapter = CulturalAdapter()
         messages = adapter.inject_persona(messages)
 
+        kwargs = {"temperature": 0.7}
+
+        # If the caller requests strict JSON output (e.g. SequentialSolver)
+        if response_format:
+            # OpenAI structured outputs spec
+            kwargs["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "structured_response",
+                    "schema": response_format,
+                    "strict": True
+                }
+            }
+
         if complexity < 0.4:
             logger.info(f"Routing to local lightweight model: {self.local_model_name}")
             try:
+                # Ollama natively supports standard json-object format
+                local_kwargs = {"temperature": 0.7}
+                if response_format:
+                    local_kwargs["response_format"] = {"type": "json_object"}
+
                 response = await self.local_client.chat.completions.create(
                     model=self.local_model_name,
                     messages=messages,
-                    temperature=0.7
+                    **local_kwargs
                 )
                 return response.choices[0].message.content
             except Exception as e:
@@ -49,7 +70,7 @@ class HybridSwitch:
             response = await self.cloud_client.chat.completions.create(
                 model=self.cloud_model_name,
                 messages=messages,
-                temperature=0.7
+                **kwargs
             )
             return response.choices[0].message.content
         except Exception as e:

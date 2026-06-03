@@ -1,9 +1,20 @@
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
+from pydantic import BaseModel, Field
 from PersonalAIOS.core_engine.routing.hybrid_switch import hybrid_router
 
 logger = logging.getLogger("SequentialSolver")
+
+# Pydantic Schemas for Structured JSON Output
+class IntentTask(BaseModel):
+    task_id: str = Field(description="A unique snake_case identifier for this sub-task")
+    description: str = Field(description="A clear description of the action required")
+    duration: Literal["immediate", "long_term"] = Field(description="Is this a quick action or a long running project?")
+    required_modules: List[str] = Field(description="List of OS modules required (e.g., 'researcher', 'python_coder')")
+
+class IntentResponse(BaseModel):
+    tasks: List[IntentTask] = Field(description="The array of split tasks parsed from the user's input")
 
 class HighRiskInterceptor:
     """
@@ -53,9 +64,7 @@ class SequentialSolver:
         system_prompt = (
             "You are the Intent Router for an autonomous OS. The user may speak in Hinglish or English. "
             "Analyze their request and split it into discrete, actionable tasks. "
-            "For each task, classify its duration as either 'immediate' (takes seconds/minutes) "
-            "or 'long_term' (takes hours/days/months like learning a topic or building a project). "
-            "Output strictly as a JSON array of objects with keys: 'task_id', 'description', 'duration', 'required_modules'."
+            "Ensure the output strictly conforms to the requested JSON schema."
         )
 
         messages = [
@@ -64,22 +73,22 @@ class SequentialSolver:
         ]
 
         try:
-            logger.info("Routing raw input to LLM for Intent Splitting...")
-            # We use local 3B model (complexity 0.1) for routing to keep it lightning fast and free
-            json_response = await hybrid_router.execute_query(messages, complexity=0.1)
+            logger.info("Routing raw input to LLM for Intent Splitting using Structured JSON Outputs...")
 
-            # Clean markdown formatting if returned
-            if json_response.startswith("```json"):
-                json_response = json_response[7:-3]
-            elif json_response.startswith("```"):
-                json_response = json_response[3:-3]
+            # We use the Hybrid Router's structural output capability to guarantee exact JSON matching
+            json_response_str = await hybrid_router.execute_query(
+                messages,
+                complexity=0.1,
+                response_format=IntentResponse.model_json_schema()
+            )
 
-            tasks = json.loads(json_response)
+            # Pydantic validation guarantees no fatal parsing errors
+            parsed_intent = IntentResponse.model_validate_json(json_response_str)
 
             return {
                 "status": "executing",
                 "message": "Intents parsed successfully.",
-                "tasks": tasks
+                "tasks": [task.model_dump() for task in parsed_intent.tasks]
             }
 
         except Exception as e:
