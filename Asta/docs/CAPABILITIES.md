@@ -1,4 +1,4 @@
-# PersonalAIOS: Complete Capabilities & Master Architecture Manifesto
+# Asta: Complete Capabilities & Master Architecture Manifesto
 
 ## 1. Core Identity & Deployment
 *   **Self-Hosted & Independent:** Not a SaaS. Runs locally on the user's physical laptop or private cloud instance. Complete data sovereignty.
@@ -30,3 +30,11 @@
 ## 6. The Memory Domain
 *   **Zero-VRAM Obsidian Graph:** Uses a local folder of heavily interconnected Markdown files. It pulls only the exact paragraph it needs using BM25/Regex, keeping the OS incredibly fast.
 *   **The Sleep Cycle:** When the CPU is idle, a background process merges duplicate thoughts and archives stale data to maintain perfect structural organization.
+
+## 7. The Cognitive Enhancement & Anti-Atrophy Engine
+*   **The Creative Push Directive:** Asta actively refuses to automate inherently human creative tasks (like poetry, drawing, reading). Instead, it forces the human to practice imagination, acting only as the grunt-work automation tool.
+*   **Cognitive Atrophy Prevention (Socratic Tutor):** Automatically generates complex thought experiments in domains like mathematics, logic, society, and emotional intelligence (EQ) to prevent the user from becoming mentally passive.
+*   **Emotional Audiobook Synthesizer:** Ingests long-form books (thrillers, biographies) and synthesizes an emotional, voice-modulated audiobook reading—igniting human imagination exactly as the author intended.
+
+## 8. Cron Scheduling & Routine Automation
+*   **Background Cron Jobs:** `AsyncTaskQueue` supports fully backgrounded recurring cron jobs. Asta can run daily stock reports, email cleanups, or OS maintenance tasks completely invisibly on custom intervals.

@@ -1,7 +1,7 @@
-# PersonalAIOS: Enterprise Architecture Manifest
+# Asta: Enterprise Architecture Manifest
 
 ## 1. Core Philosophy
-PersonalAIOS is not a standard virtual assistant. It is a fully autonomous, conscious-mimicking digital entity capable of massive, long-term asynchronous operations. It employs a decoupled, highly concurrent architecture built strictly with Isolated Functional Modules bound together by a Central Nervous System (Event Bus).
+Asta is not a standard virtual assistant. It is a fully autonomous, conscious-mimicking digital entity capable of massive, long-term asynchronous operations. It employs a decoupled, highly concurrent architecture built strictly with Isolated Functional Modules bound together by a Central Nervous System (Event Bus).
 
 ## 2. Structural Hierarchy
 The OS is divided strictly into isolated sectors:

@@ -10,6 +10,7 @@ class AsyncTaskQueue:
     """
     Persistent tracker for long-term operations lasting hours, days, or months.
     Survives system reboots by serializing task state to disk.
+    Also handles Cron Job style scheduling, ensuring tasks run repeatedly on set intervals.
     """
     def __init__(self, storage_path="~/.personalos/goals/active_tasks.json"):
         self.storage_path = os.path.expanduser(storage_path)
@@ -30,15 +31,16 @@ class AsyncTaskQueue:
         with open(self.storage_path, 'w') as f:
             json.dump(self.queue, f, indent=4)
 
-    async def add_long_term_goal(self, goal_id: str, goal_name: str, duration_estimate: str):
+    async def add_long_term_goal(self, goal_id: str, goal_name: str, duration_estimate: str, cron_interval: int = None):
         """
-        Adds a massive goal (e.g., 'Code AAA game') to the background orchestrator.
+        Adds a massive goal (e.g., 'Code AAA game') or a recurring cron task to the background orchestrator.
         """
         self.queue[goal_id] = {
             "goal": goal_name,
             "status": "running",
             "duration_estimate": duration_estimate,
             "progress_percent": 0.0,
+            "cron_interval": cron_interval,
             "sub_tasks": []
         }
         self._save_state()
@@ -53,27 +55,40 @@ class AsyncTaskQueue:
         Runs persistently. Periodically checks in, spawns sub-tasks via Coordinator,
         and saves state so progress isn't lost if the machine sleeps/reboots.
         """
+        from asta.core_engine.logic.sequential_solver import SequentialSolver
+        solver = SequentialSolver()
+
         while True:
             if goal_id not in self.queue:
                 break # Goal was removed
 
             goal_data = self.queue[goal_id]
 
-            if goal_data["status"] == "completed":
+            if goal_data["status"] == "completed" and not goal_data.get("cron_interval"):
                 logger.info(f"Long-term goal [{goal_id}] is completed. Ending background loop.")
                 break
 
             logger.debug(f"Heartbeat for long-term goal [{goal_id}]: {goal_data['progress_percent']}% complete.")
 
-            # TODO: Here we would interface with LogicEngine to evaluate next sub-step
-            # and publish it to the EventBus.
+            # Use SequentialSolver to determine next sub-steps
+            try:
+                # If it's a cron job, re-evaluate the main goal text. If a long-term project, evaluate next sub-task.
+                eval_query = f"I am currently working on '{goal_data['goal']}'. Progress is {goal_data['progress_percent']}%. What is the precise next action?"
+                next_step_data = await solver.break_down_problem(eval_query)
+
+                if next_step_data.get("status") == "executing" and next_step_data.get("tasks"):
+                    from asta.core_engine.orchestrator.event_bus import nervous_system
+                    # Route to central event bus for processing by correct subsystem
+                    await nervous_system.publish("execute_subtask", next_step_data["tasks"][0])
+            except Exception as e:
+                logger.error(f"Failed to evaluate next step for {goal_id}: {e}")
 
             # Persist any state changes
             self._save_state()
 
-            # Sleep for an hour before checking long-term progress again
-            # (Set low for testing/scaffolding purposes)
-            await asyncio.sleep(60)
+            # Sleep mechanism. If cron, sleep cron interval. If standard massive project, sleep e.g., 1 hr (60s scaffold).
+            sleep_time = goal_data.get("cron_interval") or 60
+            await asyncio.sleep(sleep_time)
 
     async def update_progress(self, goal_id: str, percent: float, status: str = "running"):
         if goal_id in self.queue:

@@ -3,7 +3,7 @@ import os
 class ProfileGenerator:
     """
     Interactive script for users to define language blend and core "Soul".
-    Runs on very first boot. Hardcodes the entity name as Asta.
+    Runs on very first boot. Defaults the entity name to 'Asta', but allows user override.
     """
     def __init__(self, identity_dir="~/.personalos/identity"):
         self.identity_dir = os.path.expanduser(identity_dir)
@@ -16,7 +16,10 @@ class ProfileGenerator:
             print("System already initialized. Booting sequence initiated.")
             return True
 
-        name = "Asta"
+        # Default to Asta, but allow user override
+        name_input = input("What would you like to name your AI? (Press Enter to default to 'Asta'): ")
+        name = name_input.strip() if name_input.strip() else "Asta"
+
         language = input("What language/blend should I use natively? (e.g. Hinglish, English): ")
         vibe = input("How should I act? (e.g. Savage best friend, Formal assistant): ")
 
