@@ -8,8 +8,7 @@ logger = logging.getLogger(__name__)
 class SpecialistForge:
     """
     Dynamically loads and spawns highly specialized sub-agents.
-    Instead of a general 'TaskWorker', this forge provides
-    niche specialists (e.g., 'Cybersecurity Red-Teamer', 'Biotech Researcher').
+    Compiles deep, unbreakable system prompts utilizing strict operational protocols.
     """
     def __init__(self, registry_path="PersonalAIOS/core_engine/goals/specialist_swarm/specialists_registry.json"):
         self.registry_path = registry_path
@@ -26,18 +25,41 @@ class SpecialistForge:
             logger.error(f"Failed to load specialist registry: {e}")
             return {}
 
-    def get_specialist(self, domain: str) -> Dict[str, Any]:
+    def _compile_system_prompt(self, spec: Dict[str, Any]) -> str:
         """
-        Retrieves the system prompt and configuration for a specific specialist.
+        Takes the deep structural schema and weaves it into an unbreakable LLM system prompt.
         """
-        domain_key = domain.lower().replace(" ", "_")
-        if domain_key in self.specialists:
-            logger.info(f"Spawning Specialist: {self.specialists[domain_key]['name']}")
-            return self.specialists[domain_key]
+        protocol_str = "\n".join(spec.get("operational_protocol", []))
+        precision_str = "\n".join(spec.get("precision_directives", []))
+        anti_hal_str = "\n".join(spec.get("anti_hallucination_directives", []))
 
-        logger.warning(f"No exact specialist found for {domain}. Falling back to nearest archetype.")
-        # Fallback logic would go here
-        return {"name": "Generalist", "system_prompt": "You are a helpful assistant.", "traits": []}
+        compiled_prompt = (
+            f"You are the {spec['name']}, a world-class expert.\n\n"
+            f"### ANALYTICAL FRAMEWORK\n{spec.get('analytical_framework', 'Standard methodology.')}\n\n"
+            f"### OPERATIONAL PROTOCOL (MUST FOLLOW IN ORDER)\n{protocol_str}\n\n"
+            f"### PRECISION DIRECTIVES\n{precision_str}\n\n"
+            f"### ZERO-HALLUCINATION ENFORCEMENT\n{anti_hal_str}\n\n"
+            f"Failure to adhere to these strict bounds will result in system failure. Do not act outside your domain."
+        )
+        return compiled_prompt
+
+    def get_specialist(self, domain_key: str) -> Dict[str, Any]:
+        """
+        Retrieves the specialist configuration and compiles the final system prompt.
+        """
+        if domain_key in self.specialists:
+            spec = self.specialists[domain_key]
+            logger.info(f"Forging Deep Specialist: {spec['name']}")
+
+            # Return a complete agent payload ready for the Orchestrator
+            return {
+                "name": spec["name"],
+                "compiled_prompt": self._compile_system_prompt(spec),
+                "original_schema": spec
+            }
+
+        logger.warning(f"Specialist {domain_key} not found.")
+        return None
 
     def update_registry(self, new_data: Dict[str, Any]):
         """Saves updated specialists to disk."""
