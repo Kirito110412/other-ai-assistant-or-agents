@@ -23,7 +23,8 @@ dependencies = [
     "opencv-python>=4.8.0.76",
     "aiortc>=1.6.0",
     "psutil>=5.9.0",
-    "aiohttp>=3.9.0"
+    "aiohttp>=3.9.0",
+    "docker>=6.1.3"
 ]
 
 [build-system]
