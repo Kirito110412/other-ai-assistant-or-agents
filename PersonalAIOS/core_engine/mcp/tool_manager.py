@@ -38,7 +38,7 @@ class MCPToolManager:
                 # The module must define MCP_TOOL_SCHEMA and execute_tool
                 if hasattr(module, "MCP_TOOL_SCHEMA") and hasattr(module, "execute_tool"):
                     schema = module.MCP_TOOL_SCHEMA
-                    tool_name = schema.get("name")
+                    tool_name = schema.get("function", {}).get("name") if "function" in schema else schema.get("name")
 
                     if tool_name:
                         self.registered_tools[tool_name] = schema
