@@ -20,7 +20,10 @@ dependencies = [
     "openai>=1.0.0", # Used as client for both cloud models and local vLLM/Ollama
     # Sensory/Actuation placeholder deps
     "pyautogui>=0.9.54",
-    "opencv-python>=4.8.0.76"
+    "opencv-python>=4.8.0.76",
+    "aiortc>=1.6.0",
+    "psutil>=5.9.0",
+    "aiohttp>=3.9.0"
 ]
 
 [build-system]

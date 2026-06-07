@@ -1,9 +1,12 @@
+from .webrtc_barge_in import WebRTCBargeIn
+import asyncio
+
 class BidirectionalTransceiver:
     """
     Low-latency real-time conversational module with interruption handling.
     """
     def __init__(self):
-        pass
+        self.webrtc = WebRTCBargeIn()
 
     def start_conversation(self):
         """
