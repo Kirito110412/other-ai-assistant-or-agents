@@ -1,3 +1,18 @@
-build/
-*.egg-info/
+# Built files and testing cache
 __pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+.nox/
+build/
+dist/
+*.egg-info/
+tests/__pycache__/
+src/asta/*/__pycache__/
+src/asta/*/*/__pycache__/
+src/asta/*/*/*/__pycache__/
+src/asta/*/*/*/*/__pycache__/
+*.log
