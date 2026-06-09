@@ -76,11 +76,14 @@ class PersistentDevEnv:
         Writes code directly to the persistent workspace volume so the agent
         can iteratively build software over time.
         """
-        host_vol_path = os.path.join(self.base_workspace_path, project_id)
+        host_vol_path = os.path.abspath(os.path.join(self.base_workspace_path, project_id))
         if not os.path.exists(host_vol_path):
             return False
 
-        full_path = os.path.join(host_vol_path, filepath)
+        full_path = os.path.abspath(os.path.join(host_vol_path, filepath))
+        if not full_path.startswith(host_vol_path):
+            return False
+
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
         with open(full_path, 'w') as f:
@@ -89,8 +92,11 @@ class PersistentDevEnv:
 
     def read_file(self, project_id: str, filepath: str) -> str:
         """Reads a file from the persistent workspace."""
-        host_vol_path = os.path.join(self.base_workspace_path, project_id)
-        full_path = os.path.join(host_vol_path, filepath)
+        host_vol_path = os.path.abspath(os.path.join(self.base_workspace_path, project_id))
+        full_path = os.path.abspath(os.path.join(host_vol_path, filepath))
+
+        if not full_path.startswith(host_vol_path):
+            return "Access denied: Path traversal detected."
 
         if os.path.exists(full_path):
             with open(full_path, 'r') as f:
